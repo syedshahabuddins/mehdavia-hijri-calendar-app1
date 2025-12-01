@@ -11,7 +11,7 @@ service cloud.firestore {
     match /users/{userId} {
       allow create: if request.auth != null && request.auth.uid == userId;
       allow update: if request.auth != null && request.auth.uid == userId
-        && !("role" in request.data || "adminId" in request.data);
+        && !("role" in request.writeFields || "adminId" in request.writeFields);
       allow read: if request.auth != null;
     }
 

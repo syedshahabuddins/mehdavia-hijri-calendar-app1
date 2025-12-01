@@ -3,8 +3,11 @@
   
   Run with Firebase Emulator Suite. These tests validate that the rules enforce proper access control.
   
+  IMPORTANT: For reliable testing, use the shell test script instead:
+    bash scripts/test-rules.sh
+  
   Usage:
-    node scripts/test-rules.js
+    node scripts/test-rules.js (basic validation)
 */
 
 const fetch = require('node-fetch');
@@ -77,10 +80,12 @@ async function runTests() {
       headers: { 'content-type': 'application/json', 'Authorization': `Bearer ${user2.idToken}` },
       body: JSON.stringify({ fields: { role: { stringValue: 'admin' } } })
     }).then(r => r.json());
-    if (roleRes.error && roleRes.error.message && roleRes.error.message.includes('PERMISSION')) {
+    if ((roleRes.error && roleRes.error.status === 'PERMISSION_DENIED') || 
+        (roleRes.error && roleRes.error.message && roleRes.error.message.includes('PERMISSION'))) {
       console.log('✓ PASS (role write denied)\n'); passed++;
     } else {
-      console.log('⚠ WARN: role field modification was not denied (may need rule tightening)\n'); 
+      console.log('⚠ WARN: role field modification was not denied (may need rule tightening)');
+      console.log('  Response:', JSON.stringify(roleRes, null, 2), '\n'); 
     }
 
     // Test 3: Unauthenticated user cannot read/write

@@ -1,54 +1,246 @@
 # mehdavia-hijri-calendar-app1
 
-Responsive Hijri & Gregorian calendar (static web prototype)
+Responsive Hijri & Gregorian calendar with Firebase backend, role-based access control, announcements, prayer times, and PWA support for mobile and large-screen TVs.
 
-Files added:
+## Quick Start
 
-- `index.html` — main UI
-- `css/styles.css` — responsive styles for mobile and TV
-- `js/app.js` — Gregorian→Hijri conversion and calendar renderer
+### 1. Local Development with Firebase Emulator Suite
 
-Run locally
+Prerequisites:
+- Node.js 18+
+- Firebase CLI (`npm install -g firebase-tools`)
+- Python 3 (for static server)
 
-Option 1 — Open in browser
-
-Open `index.html` in a browser (double-click or `file://` URL). For full functionality (fullscreen, keyboard) use a local server.
-
-Option 2 — Simple local server (recommended)
-
-From the project root run:
+Steps:
 
 ```bash
+# Install Firebase functions dependencies
+cd functions && npm install && cd ..
+
+# Start Firebase Emulator Suite (Auth, Firestore, Functions)
+firebase emulators:start --only auth,firestore,functions
+
+# In another terminal, start the static server
 python3 -m http.server 8000
-# then open http://localhost:8000 in your device/browser
+
+# Open http://localhost:8000 in your browser
 ```
 
-Notes and next steps
+Features:
+- Hijri & Gregorian calendar with month/year navigation
+- Firebase Google Sign-In
+- Role-based dashboards: `user`, `admin`, `master_admin`
+- Events CRUD (users manage personal events, admins manage user events)
+- Announcements (global by master admin, scoped by admins)
+- Prayer times fetched from Aladhan API with countdown
+- Digital & analog clocks (TV-only)
+- TV remote D-pad navigation (arrow keys cycle focus)
+- PWA support (installable on mobile/TV)
+- Firestore security rules with role/adminId write protection
 
-- Features added in this update:
-  - Firebase Google Sign-In (client-side) + Firestore-based user docs with roles: `user`, `admin`, `master_admin`.
-  - Dashboards for users, admins, and master admins: events CRUD, announcements, timezone and hijri adjustments.
-  - Announcements: master admins can post global announcements; admins can post announcements scoped to their users.
-  - Prayer times fetched via the Aladhan API (by geolocation). Admins can set custom timings for their users. A live countdown to the next prayer is shown.
-  - TV-only clocks: digital and analog clocks; TV users can choose which to display. Clocks are hidden on smaller/mobile screens.
-  - Firestore security rules example and Cloud Function example to safely set roles and custom claims.
+### 2. Production Deployment
 
-- Important security notes and next steps (required before production):
-  1. Implement and deploy Firestore Security Rules (see `firestore.rules`) to prevent clients from setting sensitive fields like `role` or `adminId`.
-  2. Use a server-side Cloud Function (example in `functions/setRole`) to set custom claims (`admin`, `master_admin`) and enforce that only master admins can promote users.
-  3. Review the rules to match your exact production needs and test with the Firebase Emulator Suite.
+#### Prerequisites:
+- Firebase project created in Google Cloud Console with:
+  - Google Sign-In enabled in Authentication
+  - Firestore enabled in Firestore Database
+  - Firebase CLI authenticated: `firebase login`
 
-- Production accuracy: The Hijri conversion included is algorithmic and approximate. For regional accuracy use the Umm al-Qura table or authoritative sources.
+#### Deployment Steps:
 
-- Running locally
+1. **Update Firebase Project Configuration:**
 
-1. Create a Firebase project and enable Google sign-in and Firestore.
-2. Copy `js/firebase-config.example.js` to `js/firebase-config.js` and fill with your project's config.
-3. Optionally set up the Cloud Function using the `functions/setRole` example and deploy with the Firebase CLI.
-4. Run a local server and open the app:
+   ```bash
+   # Link to your production Firebase project
+   firebase use --add
+   # Choose your project and set alias (e.g., "production")
+   
+   # Update .firebaserc if needed:
+   # {
+   #   "projects": {
+   #     "default": "your-project-id"
+   #   }
+   # }
+   ```
+
+2. **Update Firebase Config in JavaScript:**
+
+   Edit `js/firebase-config.js` and replace the config with your production project credentials:
+
+   ```javascript
+   const firebaseConfig = {
+     apiKey: "YOUR_API_KEY",
+     authDomain: "YOUR_PROJECT.firebaseapp.com",
+     projectId: "YOUR_PROJECT_ID",
+     storageBucket: "YOUR_PROJECT.appspot.com",
+     messagingSenderId: "YOUR_SENDER_ID",
+     appId: "YOUR_APP_ID"
+   };
+   ```
+
+3. **Deploy Cloud Functions and Firestore Rules:**
+
+   ```bash
+   firebase deploy --only functions,firestore:rules
+   ```
+
+   This will:
+   - Deploy the `setRole` Cloud Function (callable from frontend to set user roles)
+   - Deploy Firestore security rules to enforce role-based access control
+
+4. **Deploy Static Files (Optional - for Firebase Hosting):**
+
+   If you want to host the frontend on Firebase:
+
+   ```bash
+   # Configure hosting in firebase.json if not already done
+   firebase init hosting
+   
+   # Deploy everything
+   firebase deploy
+   ```
+
+#### Post-Deployment:
+
+1. **Set Master Admin:**
+
+   Use the Firebase Console to set custom claims for your master admin user:
+   - Go to Authentication → Users
+   - Click the user email
+   - Set custom claims (JSON):
+     ```json
+     { "master_admin": true, "admin": false }
+     ```
+   
+   Or use the Cloud Function from the backend:
+   ```javascript
+   // Call from an authenticated admin user's frontend
+   const setRole = firebase.functions().httpsCallable('setRole');
+   await setRole({ uid: 'user-uid', role: 'master_admin' });
+   ```
+
+2. **Test the App:**
+   - Sign in with Google
+   - Create events and announcements
+   - Test role-based access (admins can manage users, master admins can promote admins)
+
+## File Structure
+
+```
+.
+├── index.html                # Main UI with calendar, auth, dashboards
+├── css/styles.css            # Responsive styles (mobile, TV, kiosk mode)
+├── js/
+│   ├── app.js                # Calendar logic, auth, prayer times, clocks
+│   ├── firebase-config.js    # Firebase SDK config (production)
+│   └── firebase-config.example.js  # Config template
+├── functions/
+│   ├── index.js              # Cloud Functions entry point
+│   ├── package.json          # Function dependencies
+│   └── setRole/
+│       ├── index.js          # setRole callable function (master_admin only)
+│       └── package.json
+├── scripts/
+│   ├── test-rules.sh         # Shell-based Firestore rules validation
+│   └── e2e-test.js           # E2E test against emulator
+├── manifest.json             # PWA manifest
+├── sw.js                     # Service Worker (offline support)
+├── firestore.rules           # Firestore security rules
+├── firebase.json             # Firebase project config
+└── .firebaserc               # Firebase CLI project aliases
+```
+
+## Security Notes
+
+1. **Firestore Rules** (`firestore.rules`):
+   - Users cannot write `role` or `adminId` fields (prevents privilege escalation)
+   - Only authenticated users can read/write
+   - Admins can create events for their managed users
+   - Announcements require `admin` or `master_admin` custom claim
+
+2. **Cloud Function `setRole`**:
+   - Only `master_admin` custom claim can call it
+   - Sets `admin` or `master_admin` claims on other users
+   - Cannot demote the master admin
+
+3. **Default Master Admin**:
+   - Set manually via Firebase Console → Authentication → Custom Claims
+   - Or use the `setRole` function from an existing master admin
+
+## Features
+
+### Calendar
+- Hijri (Islamic calendar) dates displayed with Gregorian dates
+- Month/year navigation
+- Responsive grid layout for mobile and TV screens
+
+### Authentication
+- Firebase Google Sign-In
+- Role-based access: `user`, `admin`, `master_admin`
+- User docs stored in Firestore with metadata
+
+### Events
+- Users create and manage personal events
+- Admins can create events for their managed users
+- Real-time Firestore listeners update the calendar
+
+### Announcements
+- Global announcements by `master_admin`
+- Scoped announcements by `admin` (visible to their users)
+- Real-time updates
+
+### Prayer Times
+- Fetched from Aladhan API by geolocation
+- Live countdown to next prayer
+- Admins can set custom prayer timings per user
+
+### Clocks (TV-only)
+- Digital clock (24-hour format)
+- Analog clock (canvas-based)
+- Hidden on mobile/smaller screens
+- Toggleable via localStorage preference
+
+### TV Remote Navigation
+- Use arrow keys (↑ ↓) to cycle through focusable elements
+- Focus indicators visible on large screens
+- Touch-friendly for TV remotes
+
+### PWA Support
+- Installable on mobile and TV browsers
+- Service Worker with offline fallback
+- App shell caching strategy
+
+## Development Notes
+
+### Hijri Conversion
+The Hijri conversion is algorithmic (Julian Day Number method) and approximate. For regional accuracy, use the Umm al-Qura table or consult local Islamic authorities.
+
+### Emulator Testing
+Run local tests to validate Firestore rules:
 
 ```bash
-python3 -m http.server 8000
-# then open http://localhost:8000
+# Start emulator in one terminal
+firebase emulators:start --only auth,firestore,functions
+
+# In another terminal, run tests
+bash scripts/test-rules.sh      # Firestore rules validation
+node scripts/e2e-test.js        # End-to-end test
 ```
 
+Expected Results:
+- All Firestore rules tests pass (4/4)
+- E2E test confirms auth, Firestore operations, and Cloud Function work
+
+### Extending the App
+- Add more prayer times tracking features
+- Integrate with calendar systems (Google Calendar, Outlook)
+- Mobile app (React Native, Flutter)
+- Multi-language support
+
+## License
+
+[Your License Here]
+
+## Contributing
+
+Feel free to submit issues and pull requests.
