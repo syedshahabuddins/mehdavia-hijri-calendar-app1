@@ -78,11 +78,29 @@
     else { document.exitFullscreen().catch(()=>{}); document.body.classList.remove('kiosk') }
   });
 
-  // keyboard navigation (left/right), F for fullscreen
+  // keyboard navigation (left/right), F for fullscreen, D-pad support for TV remotes
   window.addEventListener('keydown', (e)=>{
     if(e.key === 'ArrowLeft') changeMonth(-1);
     if(e.key === 'ArrowRight') changeMonth(1);
     if(e.key === 'f' || e.key === 'F') document.getElementById('fullscreen').click();
+    
+    // TV Remote D-pad navigation: allow arrow keys to focus/navigate form elements
+    const focusableElements = document.querySelectorAll('button, input, select, textarea, [tabindex]:not([tabindex="-1"])');
+    const currentElement = document.activeElement;
+    const currentIndex = Array.from(focusableElements).indexOf(currentElement);
+    
+    if(e.key === 'ArrowDown' && focusableElements.length > 0){
+      e.preventDefault();
+      const nextIndex = (currentIndex + 1) % focusableElements.length;
+      focusableElements[nextIndex].focus();
+    }
+    if(e.key === 'ArrowUp' && focusableElements.length > 0){
+      e.preventDefault();
+      const prevIndex = currentIndex <= 0 ? focusableElements.length - 1 : currentIndex - 1;
+      focusableElements[prevIndex].focus();
+    }
+    
+    // Enter key already triggers buttons/forms, so no extra handling needed
   });
 
   // Firebase integration (if available)
@@ -213,18 +231,33 @@
 
       // If master admin, show all users
       if(userDoc.role === 'master_admin'){
-        db.collection('users').onSnapshot(snap=>{
-          const c = document.getElementById('allUsers'); c.innerHTML='';
-          snap.forEach(doc=>{
-            const u = doc.data();
-            const el = document.createElement('div');
-            el.innerHTML = `<strong>${u.displayName||u.email}</strong> — Role: ${u.role||'user'} <button data-uid="${u.uid}" class="makeAdmin">Make Admin</button> <button data-uid="${u.uid}" class="makeMaster">Make Master</button>`;
-            c.appendChild(el);
+          const functionsClient = firebase.functions();
+          db.collection('users').onSnapshot(snap=>{
+            const c = document.getElementById('allUsers'); c.innerHTML='';
+            snap.forEach(doc=>{
+              const u = doc.data();
+              const el = document.createElement('div');
+              el.innerHTML = `<strong>${u.displayName||u.email}</strong> — Role: ${u.role||'user'} <button data-uid="${u.uid}" class="makeAdmin">Make Admin</button> <button data-uid="${u.uid}" class="makeMaster">Make Master</button>`;
+              c.appendChild(el);
+            });
+            c.querySelectorAll('.makeAdmin').forEach(btn=> btn.addEventListener('click', async (ev)=>{ 
+              const uid = ev.target.dataset.uid;
+              try{
+                const setRole = functionsClient.httpsCallable('setRole');
+                await setRole({ uid, role: 'admin' });
+                alert('Role change requested: admin');
+              }catch(err){ console.error(err); alert('Error setting role: '+err.message); }
+            }));
+            c.querySelectorAll('.makeMaster').forEach(btn=> btn.addEventListener('click', async (ev)=>{ 
+              const uid = ev.target.dataset.uid;
+              try{
+                const setRole = functionsClient.httpsCallable('setRole');
+                await setRole({ uid, role: 'master_admin' });
+                alert('Role change requested: master_admin');
+              }catch(err){ console.error(err); alert('Error setting role: '+err.message); }
+            }));
           });
-          c.querySelectorAll('.makeAdmin').forEach(btn=> btn.addEventListener('click', async (ev)=>{ const uid=ev.target.dataset.uid; await db.collection('users').doc(uid).update({ role: 'admin' }); }));
-          c.querySelectorAll('.makeMaster').forEach(btn=> btn.addEventListener('click', async (ev)=>{ const uid=ev.target.dataset.uid; await db.collection('users').doc(uid).update({ role: 'master_admin' }); }));
-        });
-      }
+        }
     }
 
     function showRoleUI(userDoc){

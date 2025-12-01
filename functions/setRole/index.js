@@ -23,9 +23,9 @@ exports.setRole = functions.https.onCall(async (data, context) => {
 
   try{
     await admin.auth().setCustomUserClaims(uid, claims);
-    // Also update Firestore user doc's role field
+    // Also update Firestore user doc's role field (create if missing)
     const db = admin.firestore();
-    await db.collection('users').doc(uid).update({ role });
+    await db.collection('users').doc(uid).set({ role }, { merge: true });
     return { success: true };
   }catch(err){
     throw new functions.https.HttpsError('internal','Error setting role: '+err.message);
