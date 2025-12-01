@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Hijri - Gregorian Calendar</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <header class="app-header">
+    <h1>Hijri &amp; Gregorian Calendar</h1>
+    <div class="controls">
+      <button id="prev">◀</button>
+      <div id="monthLabel" class="month-label"></div>
+      <button id="next">▶</button>
+      <button id="today">Today</button>
+      <button id="fullscreen">Full Screen</button>
+    </div>
+    <div class="auth-controls">
+      <div id="userInfo" style="display:none">
+        <span id="userName"></span>
+        <button id="signOut">Sign out</button>
+      </div>
+      <div id="signedOut" style="display:none">
+        <button id="signIn">Sign in with Google</button>
+      </div>
+    </div>
+    <div class="tv-controls">
+      <label class="clock-toggle" style="display:none">Clock:
+        <select id="clockTypeSelect">
+          <option value="digital">Digital</option>
+          <option value="analog">Analog</option>
+        </select>
+      </label>
+    </div>
+  </header>
+
+  <main>
+    <section class="weekdays">
+      <div>Sun</div>
+      <div>Mon</div>
+      <div>Tue</div>
+      <div>Wed</div>
+      <div>Thu</div>
+      <div>Fri</div>
+      <div>Sat</div>
+    </section>
+
+    <section id="calendarSection">
+      <div id="calendar" class="calendar-grid" aria-live="polite"></div>
+    </section>
+
+    <div class="clock-area" style="display:flex;">
+      <div id="digitalClock" class="digital-clock"></div>
+      <canvas id="analogClock" class="analog-clock"></canvas>
+    </div>
+
+    <!-- Dashboards and role-specific UIs -->
+    <section id="userDashboard" style="display:none; margin-top:20px;">
+      <h2>Your Events</h2>
+      <div id="yourEvents"></div>
+      <h3>Add Event</h3>
+      <form id="addEventForm">
+        <input name="title" placeholder="Title" required />
+        <input name="date" type="date" required />
+        <button type="submit">Add</button>
+      </form>
+
+      <h3>Prayer Times</h3>
+      <div id="prayerTimes">
+        <div id="prayerList"></div>
+        <div id="nextPrayer">Next: <span id="nextPrayerName"></span> — <span id="nextPrayerTime"></span></div>
+        <div id="prayerCountdown"></div>
+      </div>
+
+      <h3>Your Settings</h3>
+      <div>
+        <label>Timezone: <select id="tzSelect"></select></label>
+        <label>Hijri adjustment: <input id="hijriAdjust" type="number" step="1" value="0" /></label>
+        <label>Use geolocation: <input id="useGeo" type="checkbox" /></label>
+        <button id="saveSettings">Save</button>
+      </div>
+    </section>
+
+    <section id="adminDashboard" style="display:none; margin-top:20px;">
+      <h2>Admin Dashboard</h2>
+      <div id="managedUsers"></div>
+
+      <h3>Announcements (to your users)</h3>
+      <form id="adminAnnouncementForm">
+        <input name="title" placeholder="Title" required />
+        <textarea name="message" placeholder="Message" required></textarea>
+        <button type="submit">Send Announcement</button>
+      </form>
+
+      <h3>Custom Prayer Timings for a user</h3>
+      <form id="customPrayerForm">
+        <input name="uid" placeholder="User UID" required />
+        <input name="Fajr" placeholder="Fajr (HH:MM)" />
+        <input name="Dhuhr" placeholder="Dhuhr (HH:MM)" />
+        <input name="Asr" placeholder="Asr (HH:MM)" />
+        <input name="Maghrib" placeholder="Maghrib (HH:MM)" />
+        <input name="Isha" placeholder="Isha (HH:MM)" />
+        <button type="submit">Save Custom Timings</button>
+      </form>
+    </section>
+
+    <section id="masterDashboard" style="display:none; margin-top:20px;">
+      <h2>Master Admin Dashboard</h2>
+      <div id="allUsers"></div>
+
+      <h3>Announcements (global)</h3>
+      <form id="masterAnnouncementForm">
+        <input name="title" placeholder="Title" required />
+        <textarea name="message" placeholder="Message" required></textarea>
+        <button type="submit">Send Global Announcement</button>
+      </form>
+
+      <h3>Add Fixed Holiday</h3>
+      <form id="addHolidayForm">
+        <input name="title" placeholder="Holiday title" required />
+        <input name="date" type="date" required />
+        <button type="submit">Add Holiday</button>
+      </form>
+    </section>
+
+  </main>
+
+  <footer class="app-footer">
+    <small>Responsive calendar for mobile and large-screen TVs — shows Gregorian and Hijri dates</small>
+  </footer>
+
+  <!-- Firebase (compat) SDKs -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+
+  <!-- Copy `js/firebase-config.example.js` to `js/firebase-config.js` and fill with your project's config -->
+  <script src="js/firebase-config.js" defer></script>
+  <script src="js/app.js" defer></script>
+</body>
+</html>

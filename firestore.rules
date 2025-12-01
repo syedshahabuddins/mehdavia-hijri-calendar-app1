@@ -1,0 +1,44 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Public read access to calendars/announcements/events for signed-in users
+    match /{document=**} {
+      allow read: if request.auth != null;
+    }
+
+    // Users collection: users can read their own doc, and update specific fields; cannot set role/adminId
+    match /users/{userId} {
+      allow create: if request.auth != null && request.auth.uid == userId;
+      allow update: if request.auth != null && request.auth.uid == userId
+        && !("role" in request.resource.data || "adminId" in request.resource.data);
+      allow read: if request.auth != null;
+    }
+
+    // Events: owners can create/read/update/delete their events; admins can create events for their managed users
+    match /events/{eventId} {
+      allow create: if request.auth != null && (
+        request.auth.uid == request.resource.data.ownerId ||
+        (request.auth.token.admin == true && request.resource.data.adminId == request.auth.uid)
+      );
+      allow read: if request.auth != null;
+      allow update, delete: if request.auth != null && (resource.data.ownerId == request.auth.uid || request.auth.token.admin == true);
+    }
+
+    // Announcements: master admins (via custom claim) create global; admins create admin-scoped
+    match /announcements/{docId} {
+      allow create: if request.auth != null && (
+        request.auth.token.master_admin == true ||
+        request.auth.token.admin == true
+      );
+      allow read: if request.auth != null;
+      allow delete: if request.auth != null && request.auth.token.master_admin == true;
+    }
+
+    // Holidays: only master admins
+    match /holidays/{docId} {
+      allow create, delete: if request.auth != null && request.auth.token.master_admin == true;
+      allow read: if request.auth != null;
+    }
+  }
+}
